@@ -58,7 +58,12 @@ class Tensor:
         return reversed(result)
 
     def backward(self):
+        # TODO: self should be scalar, if we align with the behavior of PyTorch
         self.grad = np.ones_like(self.data)
         for node in self._topological_sort():
             if node.grad_fn:
                 node.grad_fn()
+
+    def zero_grad(self):
+        for node in self._topological_sort():
+            node.grad[:] = 0.0
