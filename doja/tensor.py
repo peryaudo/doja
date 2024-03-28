@@ -6,6 +6,9 @@ class Tensor:
         self.grad = np.zeros_like(data)
         self.grad_fn = None
         self.children = []
+
+    def __repr__(self) -> str:
+        return f"Tensor({self.data})"
     
     def __add__(self, other):
         out = Tensor(self.data + other.data)
@@ -57,4 +60,5 @@ class Tensor:
     def backward(self):
         self.grad = np.ones_like(self.data)
         for node in self._topological_sort():
-            node.grad_fn()
+            if node.grad_fn:
+                node.grad_fn()
