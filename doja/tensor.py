@@ -7,7 +7,7 @@ class Tensor:
         self.grad_fn = None
         self.children = []
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f"Tensor({self.data})"
     
     def __add__(self, other):
