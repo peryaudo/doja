@@ -2,7 +2,7 @@ import numpy as np
 
 class Tensor:
     def __init__(self, data):
-        self.data = data
+        self.data = np.array(data)
         self.grad = np.zeros_like(data)
         self.grad_fn = None
         self.children = []
