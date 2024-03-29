@@ -37,6 +37,17 @@ class Tensor:
         out.grad_fn = _grad_fn
         return out
 
+    @property
+    def T(self):
+        # TODO: Avoid grad reallocation
+        out = Tensor(self.data.T)
+        out.children = [self]
+        def _grad_fn():
+            self.grad += out.grad.T
+        out.grad_fn = _grad_fn
+        return out
+
+    # TODO: Move to functional.py
     def relu(self):
         out = Tensor(np.where(self.data > 0, self.data, 0))
         out.children = [self]

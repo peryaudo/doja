@@ -25,4 +25,4 @@ class Linear(Module):
         self.bias = Parameter(Tensor(np.random.randn(out_features)))
     
     def __call__(self, x):
-        return self.weight.tensor @ x + self.bias.tensor
+        return x @ self.weight.tensor.T + self.bias.tensor
