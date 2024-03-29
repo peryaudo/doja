@@ -3,11 +3,11 @@ import numpy as np
 from .tensor import *
 
 class Parameter:
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, tensor):
+        self.tensor = tensor
 
     def __repr__(self):
-        return f"Parameter({self.data})"
+        return f"Parameter({self.tensor})"
 
 class Module:
     def __init__(self):
@@ -25,4 +25,4 @@ class Linear(Module):
         self.bias = Parameter(Tensor(np.random.randn(out_features)))
     
     def __call__(self, x):
-        return self.weight.data @ x + self.bias.data
+        return self.weight.tensor @ x + self.bias.tensor
