@@ -9,6 +9,10 @@ class Tensor:
 
     def __repr__(self):
         return f"Tensor({self.data})"
+
+    @property
+    def shape(self):
+        return self.data.shape
     
     def __add__(self, other):
         out = Tensor(self.data + other.data)
