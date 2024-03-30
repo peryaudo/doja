@@ -1,5 +1,20 @@
 import numpy as np
 
+def _reduce_grad(grad, target_shape):
+    if grad.shape == target_shape:
+        return grad
+    
+    assert len(grad.shape) >= len(target_shape)
+    stretched_shape = (1,) * (len(grad.shape) - len(target_shape)) + target_shape
+
+    reduced_axes = []
+    for i in range(len(grad.shape)):
+        if grad.shape[i] != stretched_shape[i]:
+            assert stretched_shape[i] == 1
+            reduced_axes.append(i)
+    reduced_grad = np.sum(grad, axis=tuple(reduced_axes), keepdims=True)
+    return reduced_grad.reshape(target_shape)
+
 class Tensor:
     def __init__(self, data):
         self.data = np.array(data)
@@ -18,8 +33,8 @@ class Tensor:
         out = Tensor(self.data + other.data)
         out.children = [self, other]
         def _grad_fn():
-            self.grad += out.grad
-            other.grad += out.grad
+            self.grad += _reduce_grad(out.grad, self.shape)
+            other.grad += _reduce_grad(out.grad, other.shape)
         out.grad_fn = _grad_fn
         return out
     
@@ -27,8 +42,8 @@ class Tensor:
         out = Tensor(self.data * other.data)
         out.children = [self, other]
         def _grad_fn():
-            self.grad += other.data * out.grad
-            other.grad += self.data * out.grad
+            self.grad += _reduce_grad(other.data * out.grad, self.shape)
+            other.grad += _reduce_grad(self.data * out.grad, other.shape)
         out.grad_fn = _grad_fn
         return out
 
