@@ -75,6 +75,22 @@ class Tensor:
         out.grad_fn = _grad_fn
         return out
     
+    def exp(self):
+        out = Tensor(np.exp(self.data))
+        out.children = [self]
+        def _grad_fn():
+            self.grad += out.grad * np.exp(self.data)
+        out.grad_fn = _grad_fn
+        return out
+    
+    def log(self):
+        out = Tensor(np.log(self.data))
+        out.children = [self]
+        def _grad_fn():
+            self.grad += out.grad / self.data
+        out.grad_fn = _grad_fn
+        return out
+    
     def _topological_sort(self):
         result = []
         visited = set()
