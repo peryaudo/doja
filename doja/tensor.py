@@ -57,6 +57,14 @@ class Tensor:
         out.grad_fn = _grad_fn
         return out
 
+    def __pow__(self, other):
+        out = Tensor(self.data**other)
+        out.children = [self]
+        def _grad_fn():
+            self.grad += (other * self.data**(other - 1)) * out.grad
+        out.grad_fn = _grad_fn
+        return out
+
     @property
     def T(self):
         # TODO: Avoid grad reallocation
