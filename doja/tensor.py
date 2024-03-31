@@ -103,6 +103,10 @@ class Tensor:
             self.grad += out.grad.reshape(out_shape)
         out.grad_fn = _grad_fn
         return out
+
+    def softmax(self):
+        e_logits = self.exp()
+        return e_logits / e_logits.sum(axis=-1, keepdims=True)
     
     def _topological_sort(self):
         result = []
