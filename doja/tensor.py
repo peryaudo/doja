@@ -1,6 +1,7 @@
 import numpy as np
 
 def _reduce_grad(grad, target_shape):
+    # TODO: Add more comments here
     if grad.shape == target_shape:
         return grad
     
@@ -88,6 +89,18 @@ class Tensor:
         out.children = [self]
         def _grad_fn():
             self.grad += out.grad / self.data
+        out.grad_fn = _grad_fn
+        return out
+    
+    def sum(self, axis=None, keepdims=False):
+        out_data = np.sum(self.data, axis=axis, keepdims=keepdims)
+        out_shape = out_data.shape
+        if not keepdims:
+            out_data = np.squeeze(out_data, axis=axis)
+        out = Tensor(out_data)
+        out.children = [self]
+        def _grad_fn():
+            self.grad += out.grad.reshape(out_shape)
         out.grad_fn = _grad_fn
         return out
     
