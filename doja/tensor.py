@@ -65,6 +65,12 @@ class Tensor:
         out.grad_fn = _grad_fn
         return out
 
+    def __truediv__(self, other):
+        return self * other**-1
+
+    def __rtruediv__(self, other):
+        return other * self**-1
+
     @property
     def T(self):
         # TODO: Avoid grad reallocation
