@@ -119,8 +119,17 @@ class Tensor:
         return out
 
     def softmax(self):
+        # TODO: This may lose some accuracy
+        # https://github.com/fastai/course22p2/blob/master/nbs/04_minibatch_training.ipynb
         e_logits = self.exp()
         return e_logits / e_logits.sum(axis=-1, keepdims=True)
+    
+    def cross_entropy(self, labels):
+        # TODO: This should be calculated from log softmax instead of softmax
+        # https://youtu.be/vGdB4eI4KBs?si=GU-3emSF0S7601Ox&t=5679
+        # https://github.com/fastai/course22p2/blob/master/nbs/04_minibatch_training.ipynb
+        probs = self.softmax()
+        return -(labels * probs.log()).sum() / self.shape[0]
     
     def _topological_sort(self):
         result = []
