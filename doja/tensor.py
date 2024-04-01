@@ -18,8 +18,8 @@ def _reduce_grad(grad, target_shape):
 
 class Tensor:
     def __init__(self, data):
-        self.data = np.array(data)
-        self.grad = np.zeros_like(data)
+        self.data = np.array(data).astype(np.float32)
+        self.grad = np.zeros_like(self.data)
         self.grad_fn = None
         self.children = []
 
@@ -31,6 +31,8 @@ class Tensor:
         return self.data.shape
     
     def __add__(self, other):
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
         out = Tensor(self.data + other.data)
         out.children = [self, other]
         def _grad_fn():
@@ -40,6 +42,8 @@ class Tensor:
         return out
     
     def __mul__(self, other):
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
         out = Tensor(self.data * other.data)
         out.children = [self, other]
         def _grad_fn():
@@ -64,6 +68,21 @@ class Tensor:
             self.grad += (other * self.data**(other - 1)) * out.grad
         out.grad_fn = _grad_fn
         return out
+
+    def __neg__(self):
+        return self * -1
+
+    def __radd__(self, other):
+        return self + other
+
+    def __sub__(self, other):
+        return self + (-other)
+
+    def __rsub__(self, other):
+        return other + (-self)
+
+    def __rmul__(self, other):
+        return self * other
 
     def __truediv__(self, other):
         return self * other**-1
