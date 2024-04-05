@@ -183,4 +183,7 @@ class Tensor:
 
     def zero_grad(self):
         for node in self._topological_sort():
-            node.grad[:] = 0.0
+            if len(node.shape) == 0:
+                node.grad = np.array(0.0, dtype=np.float32)
+            else:
+                node.grad[:] = 0.0
