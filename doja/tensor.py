@@ -136,18 +136,30 @@ class Tensor:
             self.grad += out.grad.reshape(out_shape)
         out.grad_fn = _grad_fn
         return out
+    
+    def max(self, axis=None, keepdims=False):
+        assert axis == -1 and keepdims == True
+        out = Tensor(np.max(self.data, axis=-1, keepdims=True))
+        out.children = [self]
+        max_indices = np.argmax(self.data, axis=-1, keepdims=False)
+        max_onehot = np.identity(self.data.shape[-1])[max_indices]
+        def _grad_fn():
+            self.grad += out.grad * max_onehot
+        out.grad_fn = _grad_fn
+        return out
 
     def softmax(self):
-        # TODO: This may lose some accuracy
-        # https://github.com/fastai/course22p2/blob/master/nbs/04_minibatch_training.ipynb
-        e_logits = self.exp()
+        logits = self
+        logits_max = logits.max(axis=-1, keepdims=True)
+        e_logits = (logits - logits_max).exp()
         return e_logits / e_logits.sum(axis=-1, keepdims=True)
     
     def cross_entropy(self, labels):
         # TODO: This should be calculated from log softmax instead of softmax
         # https://youtu.be/vGdB4eI4KBs?si=GU-3emSF0S7601Ox&t=5679
         # https://github.com/fastai/course22p2/blob/master/nbs/04_minibatch_training.ipynb
-        probs = self.softmax()
+        # Add 1e-9 to avoid log(0)
+        probs = self.softmax() + 1e-9
         return -(labels * probs.log()).sum() / self.shape[0]
     
     def _topological_sort(self):
