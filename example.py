@@ -34,8 +34,9 @@ train_images, train_labels = format_dataset(dataset['train'])
 val_images, val_labels = format_dataset(dataset['test'])
 
 BATCH_SIZE = 16
+NUM_EPOCH = 1000
 
-for epoch_idx in range(100):
+for epoch_idx in range(NUM_EPOCH):
     for i in range(0, train_images.shape[0], BATCH_SIZE):
         images = doja.Tensor(train_images[i:i+BATCH_SIZE])
         labels = doja.Tensor(train_labels[i:i+BATCH_SIZE])
