@@ -33,10 +33,12 @@ dataset = load_dataset("mnist").with_format('numpy')
 train_images, train_labels = format_dataset(dataset['train'])
 val_images, val_labels = format_dataset(dataset['test'])
 
+BATCH_SIZE = 16
+
 for epoch_idx in range(100):
-    for i in range(0, train_images.shape[0], 16):
-        images = doja.Tensor(train_images[i:i+16])
-        labels = doja.Tensor(train_labels[i:i+16])
+    for i in range(0, train_images.shape[0], BATCH_SIZE):
+        images = doja.Tensor(train_images[i:i+BATCH_SIZE])
+        labels = doja.Tensor(train_labels[i:i+BATCH_SIZE])
         logits = model(images)
         loss = logits.cross_entropy(labels)
         loss.zero_grad()
@@ -47,9 +49,9 @@ for epoch_idx in range(100):
     num_batches = 0
     num_correct = 0
 
-    for i in range(0, val_images.shape[0], 16):
-        images = doja.Tensor(val_images[i:i+16])
-        labels = doja.Tensor(val_labels[i:i+16])
+    for i in range(0, val_images.shape[0], BATCH_SIZE):
+        images = doja.Tensor(val_images[i:i+BATCH_SIZE])
+        labels = doja.Tensor(val_labels[i:i+BATCH_SIZE])
         logits = model(images)
         loss = logits.cross_entropy(labels)
         num_correct += (
@@ -59,5 +61,5 @@ for epoch_idx in range(100):
         num_batches += 1
     
     val_loss /= num_batches
-    accuracy = num_correct / (num_batches * 16) * 100.0
+    accuracy = num_correct / (num_batches * BATCH_SIZE) * 100.0
     print("epoch {}: val loss: {:.4f} accuracy: {:.2f}%".format(epoch_idx, val_loss, accuracy))
