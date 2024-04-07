@@ -1,5 +1,7 @@
 import doja
 import numpy as np
+from datasets import load_dataset
+from itertools import islice
 
 class Model(doja.Module):
     def __init__(self):
@@ -17,13 +19,22 @@ model = Model()
 
 optimizer = doja.SGD(model.parameters, lr=3e-4)
 
-inputs = doja.Tensor(np.random.randn(16, 28 * 28))
-labels = doja.Tensor(np.random.randn(16, 10))
+dataset = load_dataset("mnist").with_format('numpy')
+train_dataset = dataset['train']
 
-for i in range(1000):
-    logits = model(inputs)
+MEAN = 0.1307
+STD = 0.3081
+train_images = train_dataset['image'].astype(np.float32)
+train_images = (train_images / 255.0 - MEAN) / STD
+train_images = train_images.reshape(-1, 28 * 28)
+train_labels = train_dataset['label']
+train_labels =  np.identity(10, dtype=np.float32)[train_labels]
+
+for i in range(0, len(train_dataset), 16):
+    images = doja.Tensor(train_images[i:i+16])
+    labels = doja.Tensor(train_labels[i:i+16])
+    logits = model(images)
     loss = logits.cross_entropy(labels)
-    print(loss)
     loss.zero_grad()
     loss.backward()
     optimizer.step()
