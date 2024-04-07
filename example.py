@@ -45,14 +45,19 @@ for epoch_idx in range(100):
     
     val_loss = 0
     num_batches = 0
+    num_correct = 0
 
     for i in range(0, val_images.shape[0], 16):
         images = doja.Tensor(val_images[i:i+16])
         labels = doja.Tensor(val_labels[i:i+16])
         logits = model(images)
         loss = logits.cross_entropy(labels)
+        num_correct += (
+            (np.argmax(labels.data, axis=-1) == np.argmax(logits.data, axis=-1))
+            .astype(np.float32).sum())
         val_loss += float(loss.data)
         num_batches += 1
     
     val_loss /= num_batches
-    print("val loss after epoch {}: {:.4f}".format(epoch_idx, val_loss))
+    accuracy = num_correct / (num_batches * 16) * 100.0
+    print("epoch {}: val loss: {:.4f} accuracy: {:.2f}%".format(epoch_idx, val_loss, accuracy))
