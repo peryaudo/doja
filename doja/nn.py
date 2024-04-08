@@ -26,8 +26,10 @@ class Module:
 class Linear(Module):
     def __init__(self, in_features, out_features):
         super().__init__()
-        self.weight = Parameter(Tensor(np.random.randn(out_features, in_features)))
-        self.bias = Parameter(Tensor(np.random.randn(out_features)))
+        # Xavier initialization https://paperswithcode.com/method/xavier-initialization
+        limit = np.sqrt(6/(in_features + out_features))
+        self.weight = Parameter(Tensor(np.random.uniform(-limit, limit, size=(out_features, in_features))))
+        self.bias = Parameter(Tensor(np.zeros(out_features)))
     
     def forward(self, x):
         return x @ self.weight.tensor.T + self.bias.tensor

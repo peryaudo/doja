@@ -1,3 +1,4 @@
+# 97.6% accuracyon MNIST dataset (validation set)
 import doja
 import numpy as np
 from datasets import load_dataset
@@ -34,7 +35,7 @@ train_images, train_labels = format_dataset(dataset['train'])
 val_images, val_labels = format_dataset(dataset['test'])
 
 BATCH_SIZE = 16
-NUM_EPOCH = 500
+NUM_EPOCH = 200
 
 wandb.init(project="doja_mnist")
 
