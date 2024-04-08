@@ -1,7 +1,7 @@
 import doja
 import numpy as np
 from datasets import load_dataset
-from itertools import islice
+import wandb
 
 class Model(doja.Module):
     def __init__(self):
@@ -17,7 +17,7 @@ class Model(doja.Module):
 
 model = Model()
 
-optimizer = doja.SGD(model.parameters, lr=3e-4)
+optimizer = doja.SGD(model.parameters, lr=1e-3)
 
 def format_dataset(dataset):
     MEAN = 0.1307
@@ -34,9 +34,14 @@ train_images, train_labels = format_dataset(dataset['train'])
 val_images, val_labels = format_dataset(dataset['test'])
 
 BATCH_SIZE = 16
-NUM_EPOCH = 1000
+NUM_EPOCH = 500
 
+wandb.init(project="doja_mnist")
+
+step = 0
 for epoch_idx in range(NUM_EPOCH):
+    train_loss = 0
+    num_batches = 0
     for i in range(0, train_images.shape[0], BATCH_SIZE):
         images = doja.Tensor(train_images[i:i+BATCH_SIZE])
         labels = doja.Tensor(train_labels[i:i+BATCH_SIZE])
@@ -45,6 +50,12 @@ for epoch_idx in range(NUM_EPOCH):
         loss.zero_grad()
         loss.backward()
         optimizer.step()
+
+        train_loss += float(loss.data)
+        num_batches += 1
+        step += 1
+    
+    train_loss /= num_batches
     
     val_loss = 0
     num_batches = 0
@@ -62,5 +73,9 @@ for epoch_idx in range(NUM_EPOCH):
         num_batches += 1
     
     val_loss /= num_batches
-    accuracy = num_correct / (num_batches * BATCH_SIZE) * 100.0
-    print("epoch {}: val loss: {:.4f} accuracy: {:.2f}%".format(epoch_idx, val_loss, accuracy))
+    accuracy = num_correct / (num_batches * BATCH_SIZE)
+
+    wandb.log({"epoch": epoch_idx, "train_loss": train_loss, "val_loss": val_loss, "accuracy": accuracy}, step=step)
+    print("epoch {}: val loss: {:.4f} accuracy: {:.2f}%".format(epoch_idx, val_loss, accuracy * 100.0))
+
+wandb.finish()
