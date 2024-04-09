@@ -19,7 +19,7 @@ class Model(doja.Module):
 
     def forward(self, x):
         x = self.linear1(x)
-        x = x.relu()
+        x = doja.relu(x)
         x = self.linear2(x)
         return x
 
@@ -55,7 +55,7 @@ for epoch_idx in range(NUM_EPOCH):
         images = doja.Tensor(train_images[i:i+BATCH_SIZE])
         labels = doja.Tensor(train_labels[i:i+BATCH_SIZE])
         logits = model(images)
-        loss = logits.cross_entropy(labels)
+        loss = doja.cross_entropy(logits, labels)
         loss.backward()
         optimizer.step()
 
@@ -73,7 +73,7 @@ for epoch_idx in range(NUM_EPOCH):
         images = doja.Tensor(val_images[i:i+BATCH_SIZE])
         labels = doja.Tensor(val_labels[i:i+BATCH_SIZE])
         logits = model(images)
-        loss = logits.cross_entropy(labels)
+        loss = doja.cross_entropy(logits, labels)
         num_correct += (
             (np.argmax(labels.data, axis=-1) == np.argmax(logits.data, axis=-1))
             .astype(np.float32).sum())
