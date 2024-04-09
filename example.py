@@ -52,8 +52,8 @@ for epoch_idx in range(NUM_EPOCH):
     train_loss = 0
     num_batches = 0
     for i in range(0, train_images.shape[0], BATCH_SIZE):
-        images = doja.Tensor(train_images[i:i+BATCH_SIZE])
-        labels = doja.Tensor(train_labels[i:i+BATCH_SIZE])
+        images = doja.tensor(train_images[i:i+BATCH_SIZE])
+        labels = doja.tensor(train_labels[i:i+BATCH_SIZE])
         logits = model(images)
         loss = doja.cross_entropy(logits, labels)
         loss.backward()
@@ -70,8 +70,8 @@ for epoch_idx in range(NUM_EPOCH):
     num_correct = 0
 
     for i in range(0, val_images.shape[0], BATCH_SIZE):
-        images = doja.Tensor(val_images[i:i+BATCH_SIZE])
-        labels = doja.Tensor(val_labels[i:i+BATCH_SIZE])
+        images = doja.tensor(val_images[i:i+BATCH_SIZE])
+        labels = doja.tensor(val_labels[i:i+BATCH_SIZE])
         logits = model(images)
         loss = doja.cross_entropy(logits, labels)
         num_correct += (

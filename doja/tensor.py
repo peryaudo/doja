@@ -126,3 +126,6 @@ class Tensor:
         for node in self._topological_sort():
             if node.grad_fn:
                 node.grad_fn()
+
+def tensor(data):
+    return Tensor(data)

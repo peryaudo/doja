@@ -1,3 +1,5 @@
+import numpy as np
+
 from .tensor import *
 
 def relu(input):
@@ -52,10 +54,10 @@ def softmax(logits):
     e_logits = exp(logits - logits_max)
     return e_logits / sum(e_logits, axis=-1, keepdims=True)
 
-def cross_entropy(self, labels):
+def cross_entropy(logits, labels):
     # TODO: This should be calculated from log softmax instead of softmax
     # https://youtu.be/vGdB4eI4KBs?si=GU-3emSF0S7601Ox&t=5679
     # https://github.com/fastai/course22p2/blob/master/nbs/04_minibatch_training.ipynb
     # Add 1e-9 to avoid log(0)
-    probs = softmax(self) + 1e-9
-    return -sum(labels * log(probs)) / self.shape[0]
+    probs = softmax(logits) + 1e-9
+    return -sum(labels * log(probs)) / logits.shape[0]
