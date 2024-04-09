@@ -175,7 +175,7 @@ class Tensor:
         return reversed(result)
 
     def backward(self):
-        # TODO: self should be scalar, if we align with the behavior of PyTorch
+        assert len(self.shape) == 0, "self should be scalar"
         self.grad = np.ones_like(self.data)
         for node in self._topological_sort():
             if node.grad_fn:
