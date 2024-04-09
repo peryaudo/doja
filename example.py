@@ -3,6 +3,7 @@ import doja
 import numpy as np
 from datasets import load_dataset
 import argparse
+import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--wandb', action='store_true', help='Enable logging with wandb')
@@ -86,6 +87,11 @@ for epoch_idx in range(NUM_EPOCH):
     if args.wandb:
         wandb.log({"epoch": epoch_idx, "train_loss": train_loss, "val_loss": val_loss, "accuracy": accuracy}, step=step)
     print("epoch {}: val loss: {:.4f} accuracy: {:.2f}%".format(epoch_idx, val_loss, accuracy * 100.0))
+
+    # Save model as a file using pickle.
+    with open("ckpt.pkl", "wb") as f:
+        pickle.dump(model, f)
+
 
 if args.wandb:
     wandb.finish()
