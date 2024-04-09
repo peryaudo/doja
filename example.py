@@ -1,4 +1,4 @@
-# 97.6% accuracy on MNIST's validation set
+# 97.8% accuracy on MNIST's validation set
 import doja
 import numpy as np
 from datasets import load_dataset
