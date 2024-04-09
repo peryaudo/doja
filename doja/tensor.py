@@ -176,14 +176,15 @@ class Tensor:
 
     def backward(self):
         assert len(self.shape) == 0, "self should be scalar"
-        self.grad = np.ones_like(self.data)
-        for node in self._topological_sort():
-            if node.grad_fn:
-                node.grad_fn()
 
-    def zero_grad(self):
+        # Gradient accumulation is not supported.
         for node in self._topological_sort():
             if len(node.shape) == 0:
                 node.grad = np.array(0.0, dtype=np.float32)
             else:
                 node.grad[:] = 0.0
+
+        self.grad = np.ones_like(self.data)
+        for node in self._topological_sort():
+            if node.grad_fn:
+                node.grad_fn()

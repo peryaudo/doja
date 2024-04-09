@@ -56,7 +56,6 @@ for epoch_idx in range(NUM_EPOCH):
         labels = doja.Tensor(train_labels[i:i+BATCH_SIZE])
         logits = model(images)
         loss = logits.cross_entropy(labels)
-        loss.zero_grad()
         loss.backward()
         optimizer.step()
 
