@@ -2,7 +2,14 @@
 import doja
 import numpy as np
 from datasets import load_dataset
-import wandb
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--wandb', action='store_true', help='Enable logging with wandb')
+args = parser.parse_args()
+
+if args.wandb:
+    import wandb
 
 class Model(doja.Module):
     def __init__(self):
@@ -37,7 +44,8 @@ val_images, val_labels = format_dataset(dataset['test'])
 BATCH_SIZE = 16
 NUM_EPOCH = 200
 
-wandb.init(project="doja_mnist")
+if args.wandb:
+    wandb.init(project="doja_mnist")
 
 step = 0
 for epoch_idx in range(NUM_EPOCH):
@@ -76,7 +84,9 @@ for epoch_idx in range(NUM_EPOCH):
     val_loss /= num_batches
     accuracy = num_correct / (num_batches * BATCH_SIZE)
 
-    wandb.log({"epoch": epoch_idx, "train_loss": train_loss, "val_loss": val_loss, "accuracy": accuracy}, step=step)
+    if args.wandb:
+        wandb.log({"epoch": epoch_idx, "train_loss": train_loss, "val_loss": val_loss, "accuracy": accuracy}, step=step)
     print("epoch {}: val loss: {:.4f} accuracy: {:.2f}%".format(epoch_idx, val_loss, accuracy * 100.0))
 
-wandb.finish()
+if args.wandb:
+    wandb.finish()
