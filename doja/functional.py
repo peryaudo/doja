@@ -1,54 +1,53 @@
 from .tensor import *
 
-def relu(self):
-    out = Tensor(np.where(self.data > 0, self.data, 0))
-    out.children = [self]
+def relu(input):
+    out = Tensor(np.where(input.data > 0, input.data, 0))
+    out.children = [input]
     def _grad_fn():
-        self.grad += np.where(out.data > 0, out.grad, 0)
+        input.grad += np.where(out.data > 0, out.grad, 0)
     out.grad_fn = _grad_fn
     return out
 
-def exp(self):
-    out = Tensor(np.exp(self.data))
-    out.children = [self]
+def exp(input):
+    out = Tensor(np.exp(input.data))
+    out.children = [input]
     def _grad_fn():
-        self.grad += out.grad * np.exp(self.data)
+        input.grad += out.grad * np.exp(input.data)
     out.grad_fn = _grad_fn
     return out
 
-def log(self):
-    out = Tensor(np.log(self.data))
-    out.children = [self]
+def log(input):
+    out = Tensor(np.log(input.data))
+    out.children = [input]
     def _grad_fn():
-        self.grad += out.grad / self.data
+        input.grad += out.grad / input.data
     out.grad_fn = _grad_fn
     return out
 
-def sum(self, axis=None, keepdims=False):
-    out_data = np.sum(self.data, axis=axis, keepdims=keepdims)
+def sum(input, axis=None, keepdims=False):
+    out_data = np.sum(input.data, axis=axis, keepdims=keepdims)
     out_shape = out_data.shape
     if not keepdims:
         out_data = np.squeeze(out_data, axis=axis)
     out = Tensor(out_data)
-    out.children = [self]
+    out.children = [input]
     def _grad_fn():
-        self.grad += out.grad.reshape(out_shape)
+        input.grad += out.grad.reshape(out_shape)
     out.grad_fn = _grad_fn
     return out
 
-def max(self, axis=None, keepdims=False):
+def max(input, axis=None, keepdims=False):
     assert axis == -1 and keepdims == True
-    out = Tensor(np.max(self.data, axis=-1, keepdims=True))
-    out.children = [self]
-    max_indices = np.argmax(self.data, axis=-1, keepdims=False)
-    max_onehot = np.identity(self.data.shape[-1])[max_indices]
+    out = Tensor(np.max(input.data, axis=-1, keepdims=True))
+    out.children = [input]
+    max_indices = np.argmax(input.data, axis=-1, keepdims=False)
+    max_onehot = np.identity(input.data.shape[-1])[max_indices]
     def _grad_fn():
-        self.grad += out.grad * max_onehot
+        input.grad += out.grad * max_onehot
     out.grad_fn = _grad_fn
     return out
 
-def softmax(self):
-    logits = self
+def softmax(logits):
     logits_max = max(logits, axis=-1, keepdims=True)
     e_logits = exp(logits - logits_max)
     return e_logits / sum(e_logits, axis=-1, keepdims=True)
