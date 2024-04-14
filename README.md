@@ -34,7 +34,7 @@ optimizer.step()
 
 Doja implements `doja.Tensor` which is the equivalent of `torch.Tensor`. `doja.Tensor` is backed by numpy arrays. Compared to micrograd which only supports scalar variables, it's capable of doing something a bit more serious such as MNIST classification.
 
-The Doja library itself only depends on numpy and has no other dependencies. (It does not depend on PyTorch!) example.py also uses HuggingFace Datasets for loading MNIST dataset.
+The Doja library itself only depends on numpy and has no other dependencies. (It does not depend on PyTorch!) example.py also has dependency on HuggingFace Datasets for using the MNIST dataset.
 
 ## Features
 
