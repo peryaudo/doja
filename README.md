@@ -32,9 +32,16 @@ loss.backward()
 optimizer.step()
 ```
 
-Doja implements `doja.Tensor` which is the equivalent of `torch.Tensor`. `doja.Tensor` is backed by numpy arrays. As a result, compared to micrograd, it's capable of doing something a bit more serious such as MNIST classification.
+Doja implements `doja.Tensor` which is the equivalent of `torch.Tensor`. `doja.Tensor` is backed by numpy arrays. Compared to micrograd which only supports scalar variables, it's capable of doing something a bit more serious such as MNIST classification.
 
 The Doja library itself only depends on numpy and has no other dependencies. (It does not depend on PyTorch!) example.py also uses HuggingFace Datasets for loading MNIST dataset.
+
+## Features
+
+* Basic Tensor arithmetic operations with `doja.Tensor`
+* Backpropagation with `Tensor.backward()`
+* Stochastic Gradient Descent with `doja.SGD` optimizer
+* Various functions: `relu()`, `exp()`, `log()`, `sum()`, `max()`, `softmax()`, `cross_entropy()`
 
 ## Example
 
@@ -46,8 +53,10 @@ The Doja library itself only depends on numpy and has no other dependencies. (It
 
 Other things I'd like to try implementing:
 
-- [ ] Conv2d (useful resources: [1](https://github.com/Yangqing/caffe/wiki/Convolution-in-Caffe:-a-memo), [2](https://medium.com/impactai/cnns-from-different-viewpoints-fab7f52d159c))
 - [ ] BatchNorm
+- [ ] Weight decay
+- [ ] Adam
+- [ ] Conv2d (useful resources: [1](https://github.com/Yangqing/caffe/wiki/Convolution-in-Caffe:-a-memo), [2](https://medium.com/impactai/cnns-from-different-viewpoints-fab7f52d159c))
 - [ ] GPU support (can be probably easily added with [cupy](https://cupy.dev/))
 
 ## License
