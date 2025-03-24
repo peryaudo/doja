@@ -21,7 +21,7 @@ class Module:
         super().__setattr__(name, value)
 
     def __call__(self, x):
-        assert isinstance(x, Tensor), "The input must be a doja.Tensor"
+        assert isinstance(x, Tensor), "The input must be an orange.Tensor"
         return self.forward(x)
 
 class Linear(Module):

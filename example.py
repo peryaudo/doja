@@ -1,19 +1,19 @@
 # 97.8% accuracy on MNIST's validation set
-import doja
+import orange
 import numpy as np
 from datasets import load_dataset
 import argparse
 import pickle
 
-class Model(doja.Module):
+class Model(orange.Module):
     def __init__(self):
         super().__init__()
-        self.linear1 = doja.Linear(28 * 28, 64)
-        self.linear2 = doja.Linear(64, 10)
+        self.linear1 = orange.Linear(28 * 28, 64)
+        self.linear2 = orange.Linear(64, 10)
 
     def forward(self, x):
         x = self.linear1(x)
-        x = doja.relu(x)
+        x = orange.relu(x)
         x = self.linear2(x)
         return x
 
@@ -41,20 +41,20 @@ if __name__ == "__main__":
 
     if args.wandb:
         import wandb
-        wandb.init(project="doja_mnist")
+        wandb.init(project="orange_mnist")
 
     model = Model()
-    optimizer = doja.SGD(model.parameters, lr=1e-3)
+    optimizer = orange.SGD(model.parameters, lr=1e-3)
 
     step = 0
     for epoch_idx in range(NUM_EPOCH):
         train_loss = 0
         num_batches = 0
         for i in range(0, train_images.shape[0], BATCH_SIZE):
-            images = doja.tensor(train_images[i:i+BATCH_SIZE])
-            labels = doja.tensor(train_labels[i:i+BATCH_SIZE])
+            images = orange.tensor(train_images[i:i+BATCH_SIZE])
+            labels = orange.tensor(train_labels[i:i+BATCH_SIZE])
             logits = model(images)
-            loss = doja.cross_entropy(logits, labels)
+            loss = orange.cross_entropy(logits, labels)
             loss.backward()
             optimizer.step()
 
@@ -69,10 +69,10 @@ if __name__ == "__main__":
         num_correct = 0
 
         for i in range(0, val_images.shape[0], BATCH_SIZE):
-            images = doja.tensor(val_images[i:i+BATCH_SIZE])
-            labels = doja.tensor(val_labels[i:i+BATCH_SIZE])
+            images = orange.tensor(val_images[i:i+BATCH_SIZE])
+            labels = orange.tensor(val_labels[i:i+BATCH_SIZE])
             logits = model(images)
-            loss = doja.cross_entropy(logits, labels)
+            loss = orange.cross_entropy(logits, labels)
             num_correct += (
                 (np.argmax(labels.data, axis=-1) == np.argmax(logits.data, axis=-1))
                 .astype(np.float32).sum())

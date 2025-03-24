@@ -1,46 +1,46 @@
-# doja: Re-implementation of PyTorch-like Autograd with numpy!
+# orange: Re-implementation of PyTorch-like Autograd with numpy!
 
 Inspired by [micrograd](https://github.com/karpathy/micrograd) :)
 
-Doja is a re-implementation of PyTorch-like Autograd. If you've ever worked with PyTorch, you will notice the similarity:
+Orange is a re-implementation of PyTorch-like Autograd. If you've ever worked with PyTorch, you will notice the similarity:
 
 ```py
-import doja
+import orange
 
-class Model(doja.Module):
+class Model(orange.Module):
     def __init__(self):
         super().__init__()
-        self.linear1 = doja.Linear(28 * 28, 64)
-        self.linear2 = doja.Linear(64, 10)
+        self.linear1 = orange.Linear(28 * 28, 64)
+        self.linear2 = orange.Linear(64, 10)
 
     def forward(self, x):
         x = self.linear1(x)
-        x = doja.relu(x)
+        x = orange.relu(x)
         x = self.linear2(x)
         return x
 
 model = Model()
-optimizer = doja.SGD(model.parameters, lr=1e-3)
+optimizer = orange.SGD(model.parameters, lr=1e-3)
 
 # Loads the input images and labels from the dataset.
 # images = ...
 # labels = ...
 
 logits = model(images)
-loss = doja.cross_entropy(logits, labels)
+loss = orange.cross_entropy(logits, labels)
 loss.backward()
 optimizer.step()
 ```
 
-Doja implements `doja.Tensor` which is the equivalent of `torch.Tensor`. `doja.Tensor` is backed by numpy arrays. Compared to micrograd which only supports scalar variables, it's capable of doing something a bit more serious such as MNIST classification.
+Orange implements `orange.Tensor` which is the equivalent of `torch.Tensor`. `orange.Tensor` is backed by numpy arrays. Compared to micrograd which only supports scalar variables, it's capable of doing something a bit more serious such as MNIST classification.
 
-The Doja library itself only depends on numpy and has no other dependencies. (It does not depend on PyTorch!) example.py also has dependency on HuggingFace Datasets for using the MNIST dataset.
+The Orange library itself only depends on numpy and has no other dependencies. (It does not depend on PyTorch!) example.py also has dependency on HuggingFace Datasets for using the MNIST dataset.
 
 ## Features
 
-* Basic Tensor arithmetic operations with `doja.Tensor`
+* Basic Tensor arithmetic operations with `orange.Tensor`
 * Backpropagation with `Tensor.backward()`
-* Stochastic Gradient Descent with `doja.SGD` optimizer
+* Stochastic Gradient Descent with `orange.SGD` optimizer
 * Various functions: `relu()`, `exp()`, `log()`, `sum()`, `max()`, `softmax()`, `cross_entropy()`
 
 ## Example
