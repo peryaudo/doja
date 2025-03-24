@@ -90,24 +90,86 @@ CUDATensor create_cuda_tensor(py::array_t<float> input) {
     return CUDATensor(shape, (float*)input_buf.ptr);
 }
 
-// CUDA tensor operations
-CUDATensor cuda_add_wrapper(const CUDATensor& a, const CUDATensor& b) {
-    if (a.shape() != b.shape()) {
-        throw std::runtime_error("Shapes must match");
+// Helper function to check if shapes are broadcastable
+bool is_broadcastable(const std::vector<size_t>& shape1, const std::vector<size_t>& shape2) {
+    if (shape1.size() < shape2.size()) {
+        return is_broadcastable(shape2, shape1);
     }
     
-    CUDATensor out(a.shape());
-    cuda_add(a.data(), b.data(), out.data(), a.shape());
+    for (int i = 0; i < shape2.size(); i++) {
+        size_t dim1 = shape1[shape1.size() - 1 - i];
+        size_t dim2 = shape2[shape2.size() - 1 - i];
+        if (dim1 != dim2 && dim1 != 1 && dim2 != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Helper function to get broadcasted shape
+std::vector<size_t> get_broadcasted_shape(const std::vector<size_t>& shape1, const std::vector<size_t>& shape2) {
+    std::vector<size_t> result;
+    int i = shape1.size() - 1;
+    int j = shape2.size() - 1;
+    
+    while (i >= 0 || j >= 0) {
+        size_t dim1 = (i >= 0) ? shape1[i] : 1;
+        size_t dim2 = (j >= 0) ? shape2[j] : 1;
+        result.insert(result.begin(), std::max(dim1, dim2));
+        i--;
+        j--;
+    }
+    return result;
+}
+
+// CUDA tensor operations
+CUDATensor cuda_add_wrapper(const CUDATensor& a, const CUDATensor& b) {
+    if (a.shape() == b.shape()) {
+        CUDATensor out(a.shape());
+        cuda_add(a.data(), b.data(), out.data(), a.shape());
+        return out;
+    }
+    
+    if (!is_broadcastable(a.shape(), b.shape())) {
+        throw std::runtime_error("Shapes are not broadcastable");
+    }
+    
+    std::vector<size_t> out_shape = get_broadcasted_shape(a.shape(), b.shape());
+    CUDATensor out(out_shape);
+    
+    // Broadcast smaller tensor to match larger tensor's shape
+    if (a.shape() == out_shape) {
+        CUDATensor b_broadcasted = cuda_broadcast_wrapper(b, out_shape);
+        cuda_add(a.data(), b_broadcasted.data(), out.data(), out_shape);
+    } else {
+        CUDATensor a_broadcasted = cuda_broadcast_wrapper(a, out_shape);
+        cuda_add(a_broadcasted.data(), b.data(), out.data(), out_shape);
+    }
     return out;
 }
 
 CUDATensor cuda_mul_wrapper(const CUDATensor& a, const CUDATensor& b) {
-    if (a.shape() != b.shape()) {
-        throw std::runtime_error("Shapes must match");
+    if (a.shape() == b.shape()) {
+        CUDATensor out(a.shape());
+        cuda_mul(a.data(), b.data(), out.data(), a.shape());
+        return out;
     }
     
-    CUDATensor out(a.shape());
-    cuda_mul(a.data(), b.data(), out.data(), a.shape());
+    if (!is_broadcastable(a.shape(), b.shape())) {
+        throw std::runtime_error("Shapes are not broadcastable");
+    }
+    
+    std::vector<size_t> out_shape = get_broadcasted_shape(a.shape(), b.shape());
+    CUDATensor out(out_shape);
+    
+    // Broadcast smaller tensor to match larger tensor's shape
+    if (a.shape() == out_shape) {
+        CUDATensor b_broadcasted = cuda_broadcast_wrapper(b, out_shape);
+        cuda_mul(a.data(), b_broadcasted.data(), out.data(), out_shape);
+    } else {
+        CUDATensor a_broadcasted = cuda_broadcast_wrapper(a, out_shape);
+        cuda_mul(a_broadcasted.data(), b.data(), out.data(), out_shape);
+    }
     return out;
 }
 
@@ -165,11 +227,27 @@ CUDATensor cuda_div_wrapper(const CUDATensor& a, float b) {
 }
 
 CUDATensor cuda_sub_wrapper(const CUDATensor& a, const CUDATensor& b) {
-    if (a.shape() != b.shape()) {
-        throw std::runtime_error("Shapes must match");
+    if (a.shape() == b.shape()) {
+        CUDATensor out(a.shape());
+        cuda_sub(a.data(), b.data(), out.data(), a.shape());
+        return out;
     }
-    CUDATensor out(a.shape());
-    cuda_sub(a.data(), b.data(), out.data(), a.shape());
+    
+    if (!is_broadcastable(a.shape(), b.shape())) {
+        throw std::runtime_error("Shapes are not broadcastable");
+    }
+    
+    std::vector<size_t> out_shape = get_broadcasted_shape(a.shape(), b.shape());
+    CUDATensor out(out_shape);
+    
+    // Broadcast smaller tensor to match larger tensor's shape
+    if (a.shape() == out_shape) {
+        CUDATensor b_broadcasted = cuda_broadcast_wrapper(b, out_shape);
+        cuda_sub(a.data(), b_broadcasted.data(), out.data(), out_shape);
+    } else {
+        CUDATensor a_broadcasted = cuda_broadcast_wrapper(a, out_shape);
+        cuda_sub(a_broadcasted.data(), b.data(), out.data(), out_shape);
+    }
     return out;
 }
 
