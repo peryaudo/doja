@@ -1,12 +1,24 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <stdio.h>
+#include <vector>
+#include <algorithm>
+#include "tensor_ops.h"
 
 // Helper function to get the number of elements in a tensor
 __device__ __host__ size_t get_num_elements(const int* shape, int ndim) {
     size_t size = 1;
     for (int i = 0; i < ndim; i++) {
         size *= shape[i];
+    }
+    return size;
+}
+
+// Helper function to calculate total size
+size_t get_total_size(const std::vector<size_t>& shape) {
+    size_t size = 1;
+    for (size_t dim : shape) {
+        size *= dim;
     }
     return size;
 }
@@ -63,17 +75,17 @@ __global__ void softmax_kernel(const float* input, float* output, int batch_size
     int batch_idx = blockIdx.x;
     int thread_idx = threadIdx.x;
     
-    if (thread_idx < num_classes) {
-        // Find max in the row
+    if (batch_idx < batch_size && thread_idx < num_classes) {
+        // Find max for numerical stability
         float max_val = input[batch_idx * num_classes];
         for (int i = 1; i < num_classes; i++) {
-            max_val = max(max_val, input[batch_idx * num_classes + i]);
+            max_val = fmaxf(max_val, input[batch_idx * num_classes + i]);
         }
         
         // Compute exp and sum
         float sum = 0.0f;
         for (int i = 0; i < num_classes; i++) {
-            float exp_val = __expf(input[batch_idx * num_classes + i] - max_val);
+            float exp_val = expf(input[batch_idx * num_classes + i] - max_val);
             output[batch_idx * num_classes + i] = exp_val;
             sum += exp_val;
         }
@@ -124,46 +136,49 @@ __global__ void onehot_kernel(const int* indices, size_t num_classes, float* out
     }
 }
 
-__global__ void sum_kernel(const float* input, int axis, bool keepdims, float* output, const size_t* shape, int ndim) {
+__global__ void sum_kernel(const float* input, int axis, bool keepdims, float* output, const size_t* shape, int num_dims) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < shape[axis]) {
-        float sum = 0.0f;
         size_t stride = 1;
-        for (int i = axis + 1; i < ndim; i++) {
+        for (int i = axis + 1; i < num_dims; i++) {
             stride *= shape[i];
         }
-        for (size_t i = 0; i < shape[axis]; i++) {
-            sum += input[idx * stride + i];
+        
+        float sum = 0.0f;
+        for (int i = 0; i < shape[axis]; i++) {
+            sum += input[i * stride + idx];
         }
         output[idx] = sum;
     }
 }
 
-__global__ void max_kernel(const float* input, int axis, bool keepdims, float* output, const size_t* shape, int ndim) {
+__global__ void max_kernel(const float* input, int axis, bool keepdims, float* output, const size_t* shape, int num_dims) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < shape[axis]) {
-        float max_val = -INFINITY;
         size_t stride = 1;
-        for (int i = axis + 1; i < ndim; i++) {
+        for (int i = axis + 1; i < num_dims; i++) {
             stride *= shape[i];
         }
-        for (size_t i = 0; i < shape[axis]; i++) {
-            max_val = max(max_val, input[idx * stride + i]);
+        
+        float max_val = input[idx * stride];
+        for (int i = 1; i < shape[axis]; i++) {
+            max_val = fmaxf(max_val, input[idx * stride + i]);
         }
         output[idx] = max_val;
     }
 }
 
-__global__ void argmax_kernel(const float* input, int axis, int* output, const size_t* shape, int ndim) {
+__global__ void argmax_kernel(const float* input, int axis, int* output, const size_t* shape, int num_dims) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < shape[axis]) {
-        float max_val = -INFINITY;
-        int max_idx = 0;
         size_t stride = 1;
-        for (int i = axis + 1; i < ndim; i++) {
+        for (int i = axis + 1; i < num_dims; i++) {
             stride *= shape[i];
         }
-        for (size_t i = 0; i < shape[axis]; i++) {
+        
+        float max_val = input[idx * stride];
+        int max_idx = 0;
+        for (int i = 1; i < shape[axis]; i++) {
             float val = input[idx * stride + i];
             if (val > max_val) {
                 max_val = val;
@@ -174,17 +189,15 @@ __global__ void argmax_kernel(const float* input, int axis, int* output, const s
     }
 }
 
-__global__ void broadcast_kernel(const float* input, float* output, const size_t* input_shape, const size_t* output_shape, int ndim) {
+__global__ void broadcast_kernel(const float* input, float* output, const size_t* input_shape, const size_t* target_shape, int num_dims) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < output_shape[0]) {
-        size_t input_idx = 0;
-        size_t output_idx = idx;
-        for (int i = ndim - 1; i >= 0; i--) {
-            size_t input_dim = input_shape[i];
-            size_t output_dim = output_shape[i];
-            size_t input_pos = output_idx % output_dim;
-            input_idx += (input_pos % input_dim) * (i == 0 ? 1 : input_shape[i-1]);
-            output_idx /= output_dim;
+    if (idx < target_shape[0]) {
+        // Calculate input index based on broadcasting rules
+        int input_idx = 0;
+        for (int i = 0; i < num_dims; i++) {
+            int target_idx = (idx / target_shape[i]) % target_shape[i];
+            int input_idx_dim = target_idx % input_shape[i];
+            input_idx = input_idx * input_shape[i] + input_idx_dim;
         }
         output[idx] = input[input_idx];
     }
@@ -236,92 +249,65 @@ void cuda_softmax(const float* input, float* output, int batch_size, int num_cla
     softmax_kernel<<<grid_dim, block_dim>>>(input, output, batch_size, num_classes);
 }
 
-void cuda_exp(const float* input, float* output, const std::vector<size_t>& shape) {
-    size_t size = 1;
-    for (size_t dim : shape) {
-        size *= dim;
-    }
+void cuda_exp(const float* input, float* output, size_t size) {
     int block_size = 256;
     int num_blocks = (size + block_size - 1) / block_size;
     exp_kernel<<<num_blocks, block_size>>>(input, output, size);
 }
 
-void cuda_log(const float* input, float* output, const std::vector<size_t>& shape) {
-    size_t size = 1;
-    for (size_t dim : shape) {
-        size *= dim;
-    }
+void cuda_log(const float* input, float* output, size_t size) {
     int block_size = 256;
     int num_blocks = (size + block_size - 1) / block_size;
     log_kernel<<<num_blocks, block_size>>>(input, output, size);
 }
 
-void cuda_div(const float* input, float scalar, float* output, const std::vector<size_t>& shape) {
-    size_t size = 1;
-    for (size_t dim : shape) {
-        size *= dim;
-    }
+void cuda_div(const float* input, float scalar, float* output, size_t size) {
     int block_size = 256;
     int num_blocks = (size + block_size - 1) / block_size;
     div_kernel<<<num_blocks, block_size>>>(input, scalar, output, size);
 }
 
-void cuda_sub(const float* a, const float* b, float* output, const std::vector<size_t>& shape) {
-    size_t size = 1;
-    for (size_t dim : shape) {
-        size *= dim;
-    }
+void cuda_sub(const float* a, const float* b, float* output, size_t size) {
     int block_size = 256;
     int num_blocks = (size + block_size - 1) / block_size;
     sub_kernel<<<num_blocks, block_size>>>(a, b, output, size);
 }
 
-void cuda_onehot(const int* indices, size_t num_classes, float* output, const std::vector<size_t>& shape) {
-    size_t batch_size = 1;
-    for (size_t dim : shape) {
-        batch_size *= dim;
-    }
+void cuda_onehot(const int* indices, size_t num_classes, float* output, size_t batch_size) {
     int block_size = 256;
     int num_blocks = (batch_size + block_size - 1) / block_size;
     onehot_kernel<<<num_blocks, block_size>>>(indices, num_classes, output, batch_size);
 }
 
-void cuda_sum(const float* input, int axis, bool keepdims, float* output, const std::vector<size_t>& shape) {
-    size_t size = shape[axis];
+void cuda_sum(const float* input, int axis, bool keepdims, float* output, const size_t* shape, int num_dims) {
     int block_size = 256;
-    int num_blocks = (size + block_size - 1) / block_size;
-    sum_kernel<<<num_blocks, block_size>>>(input, axis, keepdims, output, shape.data(), shape.size());
+    int num_blocks = (shape[axis] + block_size - 1) / block_size;
+    sum_kernel<<<num_blocks, block_size>>>(input, axis, keepdims, output, shape, num_dims);
 }
 
-void cuda_max(const float* input, int axis, bool keepdims, float* output, const std::vector<size_t>& shape) {
-    size_t size = shape[axis];
+void cuda_max(const float* input, int axis, bool keepdims, float* output, const size_t* shape, int num_dims) {
     int block_size = 256;
-    int num_blocks = (size + block_size - 1) / block_size;
-    max_kernel<<<num_blocks, block_size>>>(input, axis, keepdims, output, shape.data(), shape.size());
+    int num_blocks = (shape[axis] + block_size - 1) / block_size;
+    max_kernel<<<num_blocks, block_size>>>(input, axis, keepdims, output, shape, num_dims);
 }
 
-void cuda_argmax(const float* input, int axis, int* output, const std::vector<size_t>& shape) {
-    size_t size = shape[axis];
+void cuda_argmax(const float* input, int axis, int* output, const size_t* shape, int num_dims) {
     int block_size = 256;
-    int num_blocks = (size + block_size - 1) / block_size;
-    argmax_kernel<<<num_blocks, block_size>>>(input, axis, output, shape.data(), shape.size());
+    int num_blocks = (shape[axis] + block_size - 1) / block_size;
+    argmax_kernel<<<num_blocks, block_size>>>(input, axis, output, shape, num_dims);
 }
 
-void cuda_broadcast(const float* input, const std::vector<size_t>& target_shape, float* output, const std::vector<size_t>& input_shape) {
-    size_t size = 1;
-    for (size_t dim : target_shape) {
-        size *= dim;
+void cuda_broadcast(const float* input, const size_t* input_shape, float* output, const size_t* target_shape, int num_dims) {
+    size_t output_size = 1;
+    for (int i = 0; i < num_dims; i++) {
+        output_size *= target_shape[i];
     }
     int block_size = 256;
-    int num_blocks = (size + block_size - 1) / block_size;
-    broadcast_kernel<<<num_blocks, block_size>>>(input, output, input_shape.data(), target_shape.data(), input_shape.size());
+    int num_blocks = (output_size + block_size - 1) / block_size;
+    broadcast_kernel<<<num_blocks, block_size>>>(input, output, input_shape, target_shape, num_dims);
 }
 
-void cuda_pow(const float* input, float power, float* output, const std::vector<size_t>& shape) {
-    size_t size = 1;
-    for (size_t dim : shape) {
-        size *= dim;
-    }
+void cuda_pow(const float* input, float power, float* output, size_t size) {
     int block_size = 256;
     int num_blocks = (size + block_size - 1) / block_size;
     pow_kernel<<<num_blocks, block_size>>>(input, power, output, size);
