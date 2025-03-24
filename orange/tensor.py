@@ -1,4 +1,5 @@
 import numpy as np
+from . import cuda_ops
 from .cuda_ops import add as cuda_add, mul as cuda_mul, matmul as cuda_matmul, relu as cuda_relu, create_cuda_tensor, CUDATensor, pow as cuda_pow
 
 def _reduce_grad(grad, target_shape):
@@ -63,7 +64,7 @@ class Tensor:
             other = Tensor(other, device=self.device)
         
         if self.device == 'cuda' and other.device == 'cuda':
-            out_data = cuda_add(self.data, other.data)
+            out_data = cuda_ops.add(self.data, other.data)
         else:
             out_data = self.data + other.data
             
@@ -71,8 +72,8 @@ class Tensor:
         out.children = [self, other]
         def _grad_fn():
             if self.device == 'cuda':
-                self.grad = cuda_add(self.grad, _reduce_grad(out.grad, self.shape))
-                other.grad = cuda_add(other.grad, _reduce_grad(out.grad, other.shape))
+                self.grad = cuda_ops.add(self.grad, _reduce_grad(out.grad, self.shape))
+                other.grad = cuda_ops.add(other.grad, _reduce_grad(out.grad, other.shape))
             else:
                 self.grad += _reduce_grad(out.grad, self.shape)
                 other.grad += _reduce_grad(out.grad, other.shape)
@@ -84,7 +85,7 @@ class Tensor:
             other = Tensor(other, device=self.device)
             
         if self.device == 'cuda' and other.device == 'cuda':
-            out_data = cuda_mul(self.data, other.data)
+            out_data = cuda_ops.mul(self.data, other.data)
         else:
             out_data = self.data * other.data
             
@@ -92,8 +93,8 @@ class Tensor:
         out.children = [self, other]
         def _grad_fn():
             if self.device == 'cuda':
-                self.grad = cuda_add(self.grad, cuda_mul(other.data, _reduce_grad(out.grad, self.shape)))
-                other.grad = cuda_add(other.grad, cuda_mul(self.data, _reduce_grad(out.grad, other.shape)))
+                self.grad = cuda_ops.add(self.grad, cuda_ops.mul(other.data, _reduce_grad(out.grad, self.shape)))
+                other.grad = cuda_ops.add(other.grad, cuda_ops.mul(self.data, _reduce_grad(out.grad, other.shape)))
             else:
                 self.grad += _reduce_grad(other.data * out.grad, self.shape)
                 other.grad += _reduce_grad(self.data * out.grad, other.shape)
@@ -105,7 +106,7 @@ class Tensor:
             other = Tensor(other, device=self.device)
             
         if self.device == 'cuda' and other.device == 'cuda':
-            out_data = cuda_matmul(self.data, other.data)
+            out_data = cuda_ops.matmul(self.data, other.data)
         else:
             out_data = self.data @ other.data
             
@@ -113,8 +114,8 @@ class Tensor:
         out.children = [self, other]
         def _grad_fn():
             if self.device == 'cuda':
-                self.grad = cuda_add(self.grad, cuda_matmul(out.grad, other.data.T))
-                other.grad = cuda_add(other.grad, cuda_matmul(self.data.T, out.grad))
+                self.grad = cuda_ops.add(self.grad, cuda_ops.matmul(out.grad, other.data.T))
+                other.grad = cuda_ops.add(other.grad, cuda_ops.matmul(self.data.T, out.grad))
             else:
                 self.grad += out.grad @ other.data.T
                 other.grad += self.data.T @ out.grad
@@ -123,7 +124,7 @@ class Tensor:
 
     def __pow__(self, other):
         if self.device == 'cuda':
-            out_data = cuda_pow(self.data, other)
+            out_data = cuda_ops.pow(self.data, other)
         else:
             out_data = self.data**other
             
@@ -131,7 +132,7 @@ class Tensor:
         out.children = [self]
         def _grad_fn():
             if self.device == 'cuda':
-                self.grad = cuda_add(self.grad, cuda_mul(cuda_mul(other, cuda_pow(self.data, other - 1)), out.grad))
+                self.grad = cuda_ops.add(self.grad, cuda_ops.mul(cuda_ops.mul(other, cuda_ops.pow(self.data, other - 1)), out.grad))
             else:
                 self.grad += (other * self.data**(other - 1)) * out.grad
         out.grad_fn = _grad_fn
@@ -164,7 +165,7 @@ class Tensor:
         out.children = [self]
         def _grad_fn():
             if self.device == 'cuda':
-                self.grad = cuda_add(self.grad, out.grad.T)
+                self.grad = cuda_ops.add(self.grad, out.grad.T)
             else:
                 self.grad += out.grad.T
         out.grad_fn = _grad_fn
