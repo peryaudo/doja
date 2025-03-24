@@ -1,5 +1,5 @@
 import numpy as np
-from .cuda_ops import add as cuda_add, mul as cuda_mul, matmul as cuda_matmul, relu as cuda_relu, create_cuda_tensor, CUDATensor
+from .cuda_ops import add as cuda_add, mul as cuda_mul, matmul as cuda_matmul, relu as cuda_relu, create_cuda_tensor, CUDATensor, pow as cuda_pow
 
 def _reduce_grad(grad, target_shape):
     # TODO: Add more comments here
@@ -122,11 +122,16 @@ class Tensor:
         return out
 
     def __pow__(self, other):
-        out = Tensor(self.data**other, device=self.device)
+        if self.device == 'cuda':
+            out_data = cuda_pow(self.data, other)
+        else:
+            out_data = self.data**other
+            
+        out = Tensor(out_data, device=self.device)
         out.children = [self]
         def _grad_fn():
             if self.device == 'cuda':
-                self.grad = cuda_add(self.grad, cuda_mul(cuda_mul(other * self.data**(other - 1), out.grad), _reduce_grad(out.grad, self.shape)))
+                self.grad = cuda_add(self.grad, cuda_mul(cuda_mul(other, cuda_pow(self.data, other - 1)), out.grad))
             else:
                 self.grad += (other * self.data**(other - 1)) * out.grad
         out.grad_fn = _grad_fn

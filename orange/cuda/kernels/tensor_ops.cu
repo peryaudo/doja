@@ -190,6 +190,13 @@ __global__ void broadcast_kernel(const float* input, float* output, const size_t
     }
 }
 
+__global__ void pow_kernel(const float* input, float power, float* output, size_t size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        output[idx] = powf(input[idx], power);
+    }
+}
+
 // C++ wrapper functions for CUDA operations
 extern "C" {
 
@@ -308,6 +315,16 @@ void cuda_broadcast(const float* input, const std::vector<size_t>& target_shape,
     int block_size = 256;
     int num_blocks = (size + block_size - 1) / block_size;
     broadcast_kernel<<<num_blocks, block_size>>>(input, output, input_shape.data(), target_shape.data(), input_shape.size());
+}
+
+void cuda_pow(const float* input, float power, float* output, const std::vector<size_t>& shape) {
+    size_t size = 1;
+    for (size_t dim : shape) {
+        size *= dim;
+    }
+    int block_size = 256;
+    int num_blocks = (size + block_size - 1) / block_size;
+    pow_kernel<<<num_blocks, block_size>>>(input, power, output, size);
 }
 
 } // extern "C" 

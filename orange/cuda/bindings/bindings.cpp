@@ -300,6 +300,12 @@ CUDATensor cuda_broadcast_wrapper(const CUDATensor& input, const std::vector<siz
     return out;
 }
 
+CUDATensor cuda_pow_wrapper(const CUDATensor& input, float power) {
+    CUDATensor out(input.shape());
+    cuda_pow(input.data(), power, out.data(), input.shape());
+    return out;
+}
+
 PYBIND11_MODULE(cuda_ops, m) {
     m.doc() = "CUDA operations for Orange Autograd"; // module docstring
     
@@ -353,4 +359,7 @@ PYBIND11_MODULE(cuda_ops, m) {
     
     m.def("broadcast", &cuda_broadcast_wrapper, "Broadcast CUDA tensor to target shape",
           py::arg("input"), py::arg("target_shape"));
+    
+    m.def("pow", &cuda_pow_wrapper, "Power operation on CUDA tensor",
+          py::arg("input"), py::arg("power"));
 } 
