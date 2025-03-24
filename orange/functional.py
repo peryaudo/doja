@@ -96,24 +96,9 @@ def max(input, axis=None, keepdims=False):
     return out
 
 def softmax(logits):
-    if logits.device == 'cuda':
-        out_data = cuda_ops.softmax(logits.data)
-    else:
-        logits_max = max(logits, axis=-1, keepdims=True)
-        e_logits = exp(logits - logits_max)
-        out_data = e_logits.data / sum(e_logits, axis=-1, keepdims=True).data
-        
-    out = Tensor(out_data, device=logits.device)
-    out.children = [logits]
-    def _grad_fn():
-        if logits.device == 'cuda':
-            # Softmax gradient: out * (grad - sum(grad * out, axis=-1, keepdims=True))
-            sum_term = cuda_ops.sum(cuda_ops.mul(out.grad, out_data), axis=-1, keepdims=True)
-            logits.grad = cuda_ops.add(logits.grad, cuda_ops.mul(out_data, cuda_ops.sub(out.grad, sum_term)))
-        else:
-            logits.grad += out.data * (out.grad - sum(out.grad * out.data, axis=-1, keepdims=True).data)
-    out.grad_fn = _grad_fn
-    return out
+    logits_max = max(logits, axis=-1, keepdims=True)
+    e_logits = exp(logits - logits_max)
+    return e_logits / sum(e_logits, axis=-1, keepdims=True)
 
 def cross_entropy(logits, labels):
     # TODO: This should be calculated from log softmax instead of softmax
