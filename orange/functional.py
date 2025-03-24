@@ -1,58 +1,119 @@
 import numpy as np
 
 from .tensor import *
+from .cuda_ops import relu as cuda_relu, softmax as cuda_softmax, add as cuda_add, mul as cuda_mul, exp as cuda_exp, log as cuda_log, div as cuda_div, sub as cuda_sub, onehot as cuda_onehot, sum as cuda_sum, max as cuda_max, argmax as cuda_argmax, broadcast as cuda_broadcast
 
 def relu(input):
-    out = Tensor(np.where(input.data > 0, input.data, 0))
+    if input.device == 'cuda':
+        out_data = cuda_relu(input.data)
+    else:
+        out_data = np.where(input.data > 0, input.data, 0)
+        
+    out = Tensor(out_data, device=input.device)
     out.children = [input]
     def _grad_fn():
-        input.grad += np.where(out.data > 0, out.grad, 0)
+        if input.device == 'cuda':
+            # For ReLU, gradient is 1 where input > 0, 0 otherwise
+            input.grad = cuda_add(input.grad, cuda_mul(out.grad, cuda_relu(input.data)))
+        else:
+            input.grad += np.where(out.data > 0, out.grad, 0)
     out.grad_fn = _grad_fn
     return out
 
 def exp(input):
-    out = Tensor(np.exp(input.data))
+    if input.device == 'cuda':
+        out_data = cuda_exp(input.data)
+    else:
+        out_data = np.exp(input.data)
+        
+    out = Tensor(out_data, device=input.device)
     out.children = [input]
     def _grad_fn():
-        input.grad += out.grad * np.exp(input.data)
+        if input.device == 'cuda':
+            # For exp, gradient is exp(x) * grad
+            input.grad = cuda_add(input.grad, cuda_mul(out.grad, out_data))
+        else:
+            input.grad += out.grad * np.exp(input.data)
     out.grad_fn = _grad_fn
     return out
 
 def log(input):
-    out = Tensor(np.log(input.data))
+    if input.device == 'cuda':
+        out_data = cuda_log(input.data)
+    else:
+        out_data = np.log(input.data)
+        
+    out = Tensor(out_data, device=input.device)
     out.children = [input]
     def _grad_fn():
-        input.grad += out.grad / input.data
+        if input.device == 'cuda':
+            # For log, gradient is grad / x
+            input.grad = cuda_add(input.grad, cuda_mul(out.grad, cuda_div(1.0, input.data)))
+        else:
+            input.grad += out.grad / input.data
     out.grad_fn = _grad_fn
     return out
 
 def sum(input, axis=None, keepdims=False):
-    out_data = np.sum(input.data, axis=axis, keepdims=keepdims)
+    if input.device == 'cuda':
+        out_data = cuda_sum(input.data, axis, keepdims)
+    else:
+        out_data = np.sum(input.data, axis=axis, keepdims=keepdims)
+        
     out_shape = out_data.shape
     if not keepdims:
         out_data = np.squeeze(out_data, axis=axis)
-    out = Tensor(out_data)
+    out = Tensor(out_data, device=input.device)
     out.children = [input]
     def _grad_fn():
-        input.grad += out.grad.reshape(out_shape)
+        if input.device == 'cuda':
+            # For sum, gradient is broadcasted back to input shape
+            input.grad = cuda_add(input.grad, cuda_broadcast(out.grad, input.shape))
+        else:
+            input.grad += out.grad.reshape(out_shape)
     out.grad_fn = _grad_fn
     return out
 
 def max(input, axis=None, keepdims=False):
     assert axis == -1 and keepdims == True
-    out = Tensor(np.max(input.data, axis=-1, keepdims=True))
+    if input.device == 'cuda':
+        out_data = cuda_max(input.data, axis=-1, keepdims=True)
+        max_indices = cuda_argmax(input.data, axis=-1)
+        max_onehot = cuda_onehot(max_indices, input.data.shape[-1])
+    else:
+        out_data = np.max(input.data, axis=-1, keepdims=True)
+        max_indices = np.argmax(input.data, axis=-1, keepdims=False)
+        max_onehot = np.identity(input.data.shape[-1])[max_indices]
+        
+    out = Tensor(out_data, device=input.device)
     out.children = [input]
-    max_indices = np.argmax(input.data, axis=-1, keepdims=False)
-    max_onehot = np.identity(input.data.shape[-1])[max_indices]
     def _grad_fn():
-        input.grad += out.grad * max_onehot
+        if input.device == 'cuda':
+            input.grad = cuda_add(input.grad, cuda_mul(out.grad, max_onehot))
+        else:
+            input.grad += out.grad * max_onehot
     out.grad_fn = _grad_fn
     return out
 
 def softmax(logits):
-    logits_max = max(logits, axis=-1, keepdims=True)
-    e_logits = exp(logits - logits_max)
-    return e_logits / sum(e_logits, axis=-1, keepdims=True)
+    if logits.device == 'cuda':
+        out_data = cuda_softmax(logits.data)
+    else:
+        logits_max = max(logits, axis=-1, keepdims=True)
+        e_logits = exp(logits - logits_max)
+        out_data = e_logits.data / sum(e_logits, axis=-1, keepdims=True).data
+        
+    out = Tensor(out_data, device=logits.device)
+    out.children = [logits]
+    def _grad_fn():
+        if logits.device == 'cuda':
+            # Softmax gradient: out * (grad - sum(grad * out, axis=-1, keepdims=True))
+            sum_term = cuda_sum(cuda_mul(out.grad, out_data), axis=-1, keepdims=True)
+            logits.grad = cuda_add(logits.grad, cuda_mul(out_data, cuda_sub(out.grad, sum_term)))
+        else:
+            logits.grad += out.data * (out.grad - sum(out.grad * out.data, axis=-1, keepdims=True).data)
+    out.grad_fn = _grad_fn
+    return out
 
 def cross_entropy(logits, labels):
     # TODO: This should be calculated from log softmax instead of softmax

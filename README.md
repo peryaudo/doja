@@ -57,7 +57,6 @@ Other things I'd like to try implementing:
 - [ ] Weight decay
 - [ ] Adam
 - [ ] Conv2d (useful resources: [1](https://github.com/Yangqing/caffe/wiki/Convolution-in-Caffe:-a-memo), [2](https://medium.com/impactai/cnns-from-different-viewpoints-fab7f52d159c))
-- [ ] GPU support (can be probably easily added with [cupy](https://cupy.dev/))
 
 ## License
 
