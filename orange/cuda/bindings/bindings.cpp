@@ -57,6 +57,15 @@ public:
     float* data() const { return data_; }
     const std::vector<size_t>& shape() const { return shape_; }
 
+    // Convert shape to Python tuple
+    py::tuple shape_tuple() const {
+        py::tuple result(shape_.size());
+        for (size_t i = 0; i < shape_.size(); i++) {
+            result[i] = shape_[i];
+        }
+        return result;
+    }
+
     // Copy data to host
     py::array_t<float> to_cpu() const {
         size_t size = get_total_size(shape_);
@@ -330,6 +339,17 @@ CUDATensor cuda_pow_wrapper(const CUDATensor& input, float power) {
     return out;
 }
 
+CUDATensor cuda_transpose_wrapper(const CUDATensor& input) {
+    if (input.shape().size() != 2) {
+        throw std::runtime_error("Input must be a 2D array");
+    }
+    
+    std::vector<size_t> out_shape = {input.shape()[1], input.shape()[0]};
+    CUDATensor out(out_shape);
+    cuda_transpose(input.data(), out.data(), input.shape()[0], input.shape()[1]);
+    return out;
+}
+
 PYBIND11_MODULE(cuda_ops, m) {
     m.doc() = "CUDA operations for Orange Autograd"; // module docstring
     
@@ -337,7 +357,7 @@ PYBIND11_MODULE(cuda_ops, m) {
     py::class_<CUDATensor>(m, "CUDATensor")
         .def(py::init<const std::vector<size_t>&>())
         .def("to_cpu", &CUDATensor::to_cpu)
-        .def_property_readonly("shape", &CUDATensor::shape);
+        .def_property_readonly("shape", &CUDATensor::shape_tuple);
     
     m.def("create_cuda_tensor", &create_cuda_tensor, "Create a CUDA tensor from numpy array",
           py::arg("input"));
@@ -386,4 +406,7 @@ PYBIND11_MODULE(cuda_ops, m) {
     
     m.def("pow", &cuda_pow_wrapper, "Power operation on CUDA tensor",
           py::arg("input"), py::arg("power"));
+    
+    m.def("transpose", &cuda_transpose_wrapper, "Transpose a CUDA tensor",
+          py::arg("input"));
 } 

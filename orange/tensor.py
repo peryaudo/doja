@@ -22,11 +22,18 @@ class Tensor:
     def __init__(self, data, device='cpu'):
         self.device = device
         if device == 'cuda':
-            # Convert numpy array to CUDA tensor
-            self.data = create_cuda_tensor(np.array(data).astype(np.float32))
-            self.grad = create_cuda_tensor(np.zeros_like(data))
+            if isinstance(data, CUDATensor):
+                self.data = data
+                self.grad = create_cuda_tensor(np.zeros(data.shape))
+            else:
+                # Convert numpy array to CUDA tensor
+                self.data = create_cuda_tensor(np.array(data).astype(np.float32))
+                self.grad = create_cuda_tensor(np.zeros_like(data))
         else:
-            self.data = np.array(data).astype(np.float32)
+            if isinstance(data, CUDATensor):
+                self.data = data.to_cpu()
+            else:
+                self.data = np.array(data).astype(np.float32)
             self.grad = np.zeros_like(self.data)
         self.grad_fn = None
         self.children = []
@@ -40,7 +47,7 @@ class Tensor:
     @property
     def shape(self):
         if self.device == 'cuda':
-            return self.data.shape()
+            return self.data.shape
         return self.data.shape
     
     def cpu(self):
@@ -161,11 +168,16 @@ class Tensor:
 
     @property
     def T(self):
-        out = Tensor(self.data.T, device=self.device)
+        if self.device == 'cuda':
+            out_data = cuda_ops.transpose(self.data)
+        else:
+            out_data = self.data.T
+            
+        out = Tensor(out_data, device=self.device)
         out.children = [self]
         def _grad_fn():
             if self.device == 'cuda':
-                self.grad = cuda_ops.add(self.grad, out.grad.T)
+                self.grad = cuda_ops.add(self.grad, cuda_ops.transpose(out.grad))
             else:
                 self.grad += out.grad.T
         out.grad_fn = _grad_fn

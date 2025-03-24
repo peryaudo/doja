@@ -24,6 +24,12 @@ class Module:
         assert isinstance(x, Tensor), "The input must be an orange.Tensor"
         return self.forward(x)
 
+    def cuda(self):
+        """Move all parameters to CUDA."""
+        for param in self.parameters:
+            param.tensor = param.tensor.cuda()
+        return self
+
 class Linear(Module):
     def __init__(self, in_features, out_features):
         super().__init__()

@@ -210,6 +210,16 @@ __global__ void pow_kernel(const float* input, float power, float* output, size_
     }
 }
 
+// CUDA kernel for transpose
+__global__ void transpose_kernel(const float* input, float* output, int m, int n) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if (row < m && col < n) {
+        output[col * m + row] = input[row * n + col];
+    }
+}
+
 // C++ wrapper functions for CUDA operations
 extern "C" {
 
@@ -311,6 +321,12 @@ void cuda_pow(const float* input, float power, float* output, size_t size) {
     int block_size = 256;
     int num_blocks = (size + block_size - 1) / block_size;
     pow_kernel<<<num_blocks, block_size>>>(input, power, output, size);
+}
+
+void cuda_transpose(const float* input, float* output, int m, int n) {
+    dim3 block_dim(16, 16);
+    dim3 grid_dim((n + block_dim.x - 1) / block_dim.x, (m + block_dim.y - 1) / block_dim.y);
+    transpose_kernel<<<grid_dim, block_dim>>>(input, output, m, n);
 }
 
 } // extern "C" 

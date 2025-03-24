@@ -25,4 +25,5 @@ extern "C" {
     void cuda_argmax(const float* input, int axis, int* output, const size_t* shape, int num_dims);
     void cuda_broadcast(const float* input, const size_t* input_shape, float* output, const size_t* target_shape, int num_dims);
     void cuda_pow(const float* input, float power, float* output, size_t size);
+    void cuda_transpose(const float* input, float* output, int m, int n);
 } 

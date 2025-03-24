@@ -37,6 +37,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--wandb', action='store_true', help='Enable logging with wandb')
+    parser.add_argument('--cuda', action='store_true', help='Use CUDA for training')
     args = parser.parse_args()
 
     if args.wandb:
@@ -44,6 +45,8 @@ if __name__ == "__main__":
         wandb.init(project="orange_mnist")
 
     model = Model()
+    if args.cuda:
+        model = model.cuda()
     optimizer = orange.SGD(model.parameters, lr=1e-3)
 
     step = 0
@@ -51,8 +54,8 @@ if __name__ == "__main__":
         train_loss = 0
         num_batches = 0
         for i in range(0, train_images.shape[0], BATCH_SIZE):
-            images = orange.tensor(train_images[i:i+BATCH_SIZE])
-            labels = orange.tensor(train_labels[i:i+BATCH_SIZE])
+            images = orange.tensor(train_images[i:i+BATCH_SIZE], device='cuda' if args.cuda else 'cpu')
+            labels = orange.tensor(train_labels[i:i+BATCH_SIZE], device='cuda' if args.cuda else 'cpu')
             logits = model(images)
             loss = orange.cross_entropy(logits, labels)
             loss.backward()
@@ -69,8 +72,8 @@ if __name__ == "__main__":
         num_correct = 0
 
         for i in range(0, val_images.shape[0], BATCH_SIZE):
-            images = orange.tensor(val_images[i:i+BATCH_SIZE])
-            labels = orange.tensor(val_labels[i:i+BATCH_SIZE])
+            images = orange.tensor(val_images[i:i+BATCH_SIZE], device='cuda' if args.cuda else 'cpu')
+            labels = orange.tensor(val_labels[i:i+BATCH_SIZE], device='cuda' if args.cuda else 'cpu')
             logits = model(images)
             loss = orange.cross_entropy(logits, labels)
             num_correct += (

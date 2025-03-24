@@ -1,2 +1,6 @@
 __pycache__/
 wandb/
+*.so
+tmp
+build
+orange.egg-info
